@@ -79,7 +79,7 @@ fn start_worker() {
         )
         .ok()
         .map(|a| a.trim().replace('\n', " "))
-        .filter(|a| !a.is_empty())
+        .filter(|a| !a.is_empty() && !looks_bad(a))
         .unwrap_or_else(|| {
             let mut state = app().lock().unwrap();
             fallback(state.memories.of(job.player).stage(), &job.text).to_owned()
@@ -91,6 +91,20 @@ fn start_worker() {
         memory.push(true, answer.clone());
         state.outbox.push(format!("ChatNoir: {answer}"));
     });
+}
+
+fn looks_bad(text: &str) -> bool {
+    let words: Vec<String> = text
+        .split_whitespace()
+        .map(|w| w.trim_matches(|c: char| !c.is_alphanumeric()).to_lowercase())
+        .filter(|w| !w.is_empty())
+        .collect();
+    let unique = words.iter().collect::<std::collections::HashSet<_>>().len();
+    let looping = words.len() > 6 && unique * 2 < words.len();
+    let mojibake = ["РЎ", "СЃ", "Рї", "Рµ", "СЂ", "Р°", "С‚"]
+        .iter()
+        .any(|m| text.contains(m));
+    looping || mojibake
 }
 
 fn is_flirty(text: &str) -> bool {
@@ -342,7 +356,14 @@ fn queue_reply(player: u128, text: &str) {
         }
         (
             system_prompt(memory.stage(), memory),
-            memory.history.clone(),
+            memory
+                .history
+                .iter()
+                .rev()
+                .take(6)
+                .rev()
+                .cloned()
+                .collect::<Vec<_>>(),
         )
     };
     let mut state = app().lock().unwrap();
@@ -365,5 +386,12 @@ mod tests {
     fn flirty_words_score() {
         assert!(is_flirty("ты такой милый"));
         assert!(!is_flirty("где железо"));
+    }
+
+    #[test]
+    fn rejects_loops_and_mojibake() {
+        assert!(looks_bad("мяу мяу мяу мяу мяу мяу мяу мяу"));
+        assert!(looks_bad("СЃРјРёСЂРёСЃСЊ, Р·Р°СЏ"));
+        assert!(!looks_bad("Мяу, я рядом, киска."));
     }
 }

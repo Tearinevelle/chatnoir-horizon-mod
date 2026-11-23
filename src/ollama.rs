@@ -161,7 +161,7 @@ pub fn chat(endpoint: &str, model: &str, system: &str, history: &[(bool, String)
     }
     messages.push(format!("{{\"role\":\"user\",\"content\":\"{}\"}}", json_escape(user)));
     let body = format!(
-        "{{\"model\":\"{}\",\"stream\":false,\"messages\":[{}],\"options\":{{\"temperature\":0.8,\"num_predict\":48}}}}",
+        "{{\"model\":\"{}\",\"stream\":false,\"messages\":[{}],\"options\":{{\"temperature\":0.55,\"num_predict\":60,\"repeat_penalty\":1.3,\"repeat_last_n\":128}}}}",
         json_escape(model),
         messages.join(",")
     );
