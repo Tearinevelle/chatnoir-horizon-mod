@@ -116,6 +116,10 @@ impl Memories {
     pub fn of(&mut self, player: u128) -> &mut Memory {
         self.0.entry(player).or_default()
     }
+
+    pub fn any_lover(&self) -> bool {
+        self.0.values().any(|m| m.stage() >= Stage::Lover)
+    }
 }
 
 pub fn system_prompt(stage: Stage, memory: &Memory) -> String {

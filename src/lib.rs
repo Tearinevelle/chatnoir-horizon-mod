@@ -89,7 +89,12 @@ impl EntityRenderer for NoirRenderer {
         draw.pop();
         draw.push();
         draw.rotate_about([0.0, 1.0, 0.0], head_yaw, [0.0, 1.35, 0.0]);
-        draw.rotate_about([1.0, 0.0, 0.0], head_pitch, [0.0, 1.35, 0.0]);
+        let nod = if walk.abs() < 0.05 {
+            ((entity.age * 0.12).sin() * 7.0) as f32
+        } else {
+            0.0
+        };
+        draw.rotate_about([1.0, 0.0, 0.0], head_pitch + nod, [0.0, 1.35, 0.0]);
         draw.cube(
             [-0.225, 1.35, -0.225],
             [0.225, 1.8, 0.225],
@@ -354,13 +359,22 @@ impl Hooks for Mod {
         for line in lines {
             let _ = host.messages().broadcast(Text::literal(line));
         }
-        let due = {
+        let (due, tick) = {
             let mut state = app().lock().unwrap();
             state.tick = state.tick.wrapping_add(1);
-            state.tick % 20 == 0
+            (state.tick % 20 == 0, state.tick)
         };
         if !due {
             return;
+        }
+        host.commands().run_command(
+            "execute at @e[type=chatnoir:chatnoir,limit=1] run damage @e[type=!player,type=!chatnoir:chatnoir,type=!item,distance=..3] 4 minecraft:mob_attack",
+        );
+        let lover = app().lock().unwrap().memories.any_lover();
+        if lover && tick % 60 == 0 {
+            host.commands().run_command(
+                "execute at @e[type=chatnoir:chatnoir,limit=1] run damage @p[distance=..2] 1 minecraft:mob_attack",
+            );
         }
         for player in host.players().server_players() {
             let (id, desired) = {
