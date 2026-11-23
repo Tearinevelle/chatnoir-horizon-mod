@@ -1,9 +1,9 @@
-use std::io::{Read, Write};
+﻿use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
 pub const DEFAULT_ENDPOINT: &str = "http://127.0.0.1:11434";
-pub const DEFAULT_MODEL: &str = "qwen2.5:3b";
+pub const DEFAULT_MODEL: &str = "chatnoir";
 
 #[derive(Debug)]
 pub struct Response {
@@ -161,11 +161,11 @@ pub fn chat(endpoint: &str, model: &str, system: &str, history: &[(bool, String)
     }
     messages.push(format!("{{\"role\":\"user\",\"content\":\"{}\"}}", json_escape(user)));
     let body = format!(
-        "{{\"model\":\"{}\",\"stream\":false,\"messages\":[{}],\"options\":{{\"temperature\":0.85}}}}",
+        "{{\"model\":\"{}\",\"stream\":false,\"messages\":[{}],\"options\":{{\"temperature\":0.8,\"num_predict\":48}}}}",
         json_escape(model),
         messages.join(",")
     );
-    let r = http_post(endpoint, "/api/chat", &body, Duration::from_secs(180))?;
+    let r = http_post(endpoint, "/api/chat", &body, Duration::from_secs(60))?;
     if r.status != 200 {
         return Err(format!("ollama answered {}", r.status));
     }
@@ -202,16 +202,16 @@ mod tests {
 
     #[test]
     fn parses_ollama_answer() {
-        let raw = "{\"model\":\"qwen2.5:3b\",\"message\":{\"role\":\"assistant\",\"content\":\"Привет, \\\"киска\\\".\\nЯ рядом.\"},\"done\":true}";
+        let raw = "{\"model\":\"qwen2.5:3b\",\"message\":{\"role\":\"assistant\",\"content\":\"РџСЂРёРІРµС‚, \\\"РєРёСЃРєР°\\\".\\nРЇ СЂСЏРґРѕРј.\"},\"done\":true}";
         assert_eq!(
             find_str_field(raw, "content").as_deref(),
-            Some("Привет, \"киска\".\nЯ рядом.")
+            Some("РџСЂРёРІРµС‚, \"РєРёСЃРєР°\".\nРЇ СЂСЏРґРѕРј.")
         );
     }
 
     #[test]
     fn escapes_and_unescapes() {
-        let s = "он сказал \"мяу\"\nи ушёл";
+        let s = "РѕРЅ СЃРєР°Р·Р°Р» \"РјСЏСѓ\"\nРё СѓС€С‘Р»";
         assert_eq!(json_unescape(&json_escape(s)), s);
     }
 
@@ -226,3 +226,4 @@ mod tests {
         assert_eq!(dechunk("5\r\nhello\r\n0\r\n\r\n"), "hello");
     }
 }
+
