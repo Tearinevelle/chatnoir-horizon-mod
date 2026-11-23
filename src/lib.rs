@@ -23,17 +23,80 @@ const MAX_REPLY_CHARS: usize = 220;
 
 struct NoirRenderer;
 
+fn skin(uv: [f32; 4]) -> [Option<CubeFace<'static>>; 6] {
+    let face = Some(CubeFace::new("chatnoir:entity/chatnoir").with_uv(uv));
+    [face; 6]
+}
+
 impl EntityRenderer for NoirRenderer {
     fn submit(
         &self,
         entity: &EntityRenderState,
         draw: &mut dyn BlockEntityDrawContext,
     ) -> Result<(), String> {
-        draw.rotate_about([0.0, 1.0, 0.0], -entity.yaw, [0.0; 3]);
-        let face = || Some(CubeFace::new("chatnoir:entity/chatnoir"));
-        draw.cube([-0.3, 0.0, -0.15], [0.3, 0.75, 0.15], [face(); 6], 0xFFFFFF);
-        draw.cube([-0.32, 0.75, -0.16], [0.32, 1.42, 0.16], [face(); 6], 0xFFFFFF);
-        draw.cube([-0.3, 1.42, -0.15], [0.3, 1.8, 0.15], [face(); 6], 0xFFFFFF);
+        let (body_rot, head_yaw, head_pitch, walk) = match &entity.living {
+            Some(living) => (
+                living.body_rot,
+                living.y_rot,
+                living.x_rot,
+                living.walk_animation_pos,
+            ),
+            None => (entity.yaw, 0.0, entity.pitch, 0.0),
+        };
+        draw.rotate_about([0.0, 1.0, 0.0], -body_rot, [0.0; 3]);
+        let swing = (walk * std::f32::consts::PI).sin() * 35.0;
+        draw.push();
+        draw.rotate_about([1.0, 0.0, 0.0], swing, [0.0, 0.75, 0.0]);
+        draw.cube(
+            [-0.125, 0.0, -0.125],
+            [0.125, 0.75, 0.125],
+            skin([1.0, 5.0, 2.0, 8.0]),
+            0xFFFFFF,
+        );
+        draw.pop();
+        draw.push();
+        draw.rotate_about([1.0, 0.0, 0.0], -swing, [0.0, 0.75, 0.0]);
+        draw.cube(
+            [-0.125, 0.0, -0.125],
+            [0.125, 0.75, 0.125],
+            skin([5.0, 13.0, 6.0, 16.0]),
+            0xFFFFFF,
+        );
+        draw.pop();
+        draw.cube(
+            [-0.25, 0.75, -0.125],
+            [0.25, 1.35, 0.125],
+            skin([5.0, 5.0, 7.0, 8.0]),
+            0xFFFFFF,
+        );
+        draw.push();
+        draw.rotate_about([1.0, 0.0, 0.0], -swing, [0.25, 1.3, 0.0]);
+        draw.cube(
+            [0.25, 0.6, -0.125],
+            [0.375, 1.3, 0.125],
+            skin([11.0, 5.0, 12.0, 8.0]),
+            0xFFFFFF,
+        );
+        draw.pop();
+        draw.push();
+        draw.rotate_about([1.0, 0.0, 0.0], swing, [-0.25, 1.3, 0.0]);
+        draw.cube(
+            [-0.375, 0.6, -0.125],
+            [-0.25, 1.3, 0.125],
+            skin([9.0, 13.0, 10.0, 16.0]),
+            0xFFFFFF,
+        );
+        draw.pop();
+        draw.push();
+        draw.rotate_about([0.0, 1.0, 0.0], head_yaw, [0.0, 1.35, 0.0]);
+        draw.rotate_about([1.0, 0.0, 0.0], head_pitch, [0.0, 1.35, 0.0]);
+        draw.cube(
+            [-0.225, 1.35, -0.225],
+            [0.225, 1.8, 0.225],
+            skin([2.0, 2.0, 4.0, 4.0]),
+            0xFFFFFF,
+        );
+        draw.pop();
         Ok(())
     }
 }
