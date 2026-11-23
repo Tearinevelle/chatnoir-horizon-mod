@@ -6,7 +6,7 @@ use mod_api::prelude::EntitiesHost;
 use mod_api::{
     self, BlockEntityDrawContext, Command, CommandArgumentValue, CommandSource, CubeFace,
     EntityRenderState, EntityRenderer, Flow, Hooks, RegisterEntityRenderersEvent,
-    RegistrationContext, RunModCommandEvent, ServerChatEvent, ServerHost, ServerTickEvent,
+    RegistrationContext, PlayerLoggedInEvent, RunModCommandEvent, ServerChatEvent, ServerHost, ServerTickEvent,
     ServerTickPhase, Text,
 };
 
@@ -126,6 +126,25 @@ fn is_flirty(text: &str) -> bool {
 
 #[mod_api::horizon_mod]
 impl Hooks for Mod {
+    fn player_logged_in(&self, host: &mut dyn ServerHost, event: &mut PlayerLoggedInEvent<'_>) {
+        let dimension = host.dimension().to_owned();
+        let Some(player) = host.player(event.player) else {
+            return;
+        };
+        let Some(pos) = player.entity().position(host) else {
+            return;
+        };
+        let at = [pos[0] + 9.0, pos[1], pos[2] + 9.0];
+        if host
+            .summon(&dimension, ENTITY_ID, at, Default::default())
+            .is_some()
+        {
+            let _ = host.messages().broadcast(Text::literal(
+                "Кот Нуар уже где-то рядом. Не оборачивайся.",
+            ));
+        }
+    }
+
     fn register_commands(&self, _: &mut dyn ServerHost, event: &mut mod_api::RegisterCommandsEvent<'_>) {
         event.commands.push(Command::new("aiChat install"));
         event.commands.push(Command::new("aiChat check"));
@@ -298,4 +317,5 @@ mod tests {
         assert!(!is_flirty("РіРґРµ Р¶РµР»РµР·Рѕ"));
     }
 }
+
 
