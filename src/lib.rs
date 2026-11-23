@@ -88,16 +88,27 @@ impl EntityRenderer for NoirRenderer {
         );
         draw.pop();
         draw.push();
-        draw.rotate_about([0.0, 1.0, 0.0], head_yaw, [0.0, 1.35, 0.0]);
-        let nod = if walk.abs() < 0.05 {
+        let idle = walk.abs() < 0.05;
+        let look = if idle {
+            ((entity.age * 0.04).sin() * 18.0) as f32
+        } else {
+            0.0
+        };
+        let breath = if idle {
+            ((entity.age * 0.08).sin() * 0.012) as f32
+        } else {
+            0.0
+        };
+        draw.rotate_about([0.0, 1.0, 0.0], head_yaw + look, [0.0, 1.35, 0.0]);
+        let nod = if idle {
             ((entity.age * 0.12).sin() * 7.0) as f32
         } else {
             0.0
         };
         draw.rotate_about([1.0, 0.0, 0.0], head_pitch + nod, [0.0, 1.35, 0.0]);
         draw.cube(
-            [-0.225, 1.35, -0.225],
-            [0.225, 1.8, 0.225],
+            [-0.225, 1.35 + breath, -0.225],
+            [0.225, 1.8 + breath, 0.225],
             skin([2.0, 2.0, 4.0, 4.0]),
             0xFFFFFF,
         );
