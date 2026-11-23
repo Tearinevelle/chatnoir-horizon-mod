@@ -142,6 +142,7 @@ impl Hooks for Mod {
         event.commands.push(Command::new("aiChat clear"));
         event.commands.push(Command::new("aiChat say <text:text>"));
         event.commands.push(Command::new("aiChat summon"));
+        event.commands.push(Command::new("aiChat cataclysm"));
     }
 
     fn run_mod_command(
@@ -231,6 +232,16 @@ impl Hooks for Mod {
                     None => "Не вижу тебя.".to_owned(),
                 };
                 let _ = host.messages().broadcast(Text::literal(line));
+            }
+            "cataclysm" => {
+                let _ = host.messages().broadcast(Text::literal("Катаклизм!"));
+                host.commands()
+                    .run_command("execute at @p anchored eyes run setblock ^ ^ ^3 air");
+                host.commands().run_command(
+                    "execute at @p anchored eyes run particle minecraft:ash ^ ^ ^3 0.8 0.8 0.8 0.05 60 normal",
+                );
+                host.commands()
+                    .run_command("playsound minecraft:entity.wither.break_block player @p");
             }
             "say" => queue_reply(uuid, &arg),
             _ => {
