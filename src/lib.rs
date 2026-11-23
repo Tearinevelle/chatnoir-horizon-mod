@@ -1,8 +1,8 @@
-﻿use std::collections::VecDeque;
+﻿use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
-use mod_api::prelude::EntitiesHost;
+use mod_api::prelude::{EntitiesHost, EntitiesServerHost};
 use mod_api::{
     self, BlockEntityDrawContext, Command, CommandArgumentValue, CommandSource, CubeFace,
     EntityRenderState, EntityRenderer, Flow, Hooks, PlayerLoggedInEvent, RegisterEntityRenderersEvent,
@@ -51,6 +51,8 @@ struct App {
     jobs: VecDeque<Job>,
     outbox: Vec<String>,
     worker_started: bool,
+    spawned: HashMap<u128, u32>,
+    tick: u32,
 }
 
 fn app() -> &'static Mutex<App> {
@@ -112,10 +114,8 @@ impl Hooks for Mod {
             return;
         };
         let at = [pos[0] + 9.0, pos[1], pos[2] + 9.0];
-        if host
-            .summon(&dimension, ENTITY_ID, at, Default::default())
-            .is_some()
-        {
+        if let Some(id) = host.summon(&dimension, ENTITY_ID, at, Default::default()) {
+            app().lock().unwrap().spawned.insert(event.player, id);
             let _ = host
                 .messages()
                 .broadcast(Text::literal("Кот Нуар уже где-то рядом. Не оборачивайся."));
@@ -265,6 +265,46 @@ impl Hooks for Mod {
         };
         for line in lines {
             let _ = host.messages().broadcast(Text::literal(line));
+        }
+        let due = {
+            let mut state = app().lock().unwrap();
+            state.tick = state.tick.wrapping_add(1);
+            state.tick % 20 == 0
+        };
+        if !due {
+            return;
+        }
+        for player in host.players().server_players() {
+            let (id, desired) = {
+                let mut state = app().lock().unwrap();
+                let stage = state.memories.of(player.uuid()).stage();
+                (state.spawned.get(&player.uuid()).copied(), stage.stay_distance())
+            };
+            let (Some(id), Some(ppos)) = (id, player.entity().position(host)) else {
+                continue;
+            };
+            let Some(entity) = host.entity(id) else {
+                continue;
+            };
+            let Some(epos) = entity.position(host) else {
+                continue;
+            };
+            let dx = epos[0] - ppos[0];
+            let dz = epos[2] - ppos[2];
+            let dist = (dx * dx + dz * dz).sqrt();
+            if dist > desired + 2.0 || dist < 1.0 {
+                let (nx, nz) = if dist < 0.01 {
+                    (1.0, 0.0)
+                } else {
+                    (dx / dist, dz / dist)
+                };
+                let target = [ppos[0] + nx * desired, ppos[1], ppos[2] + nz * desired];
+                let command = format!(
+                    "tp @e[type={ENTITY_ID},limit=1,sort=nearest] {:.2} {:.2} {:.2}",
+                    target[0], target[1], target[2]
+                );
+                host.commands().run_command(&command);
+            }
         }
     }
 }
